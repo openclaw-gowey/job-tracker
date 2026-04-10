@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 
-const API = '';
+const API = import.meta.env.VITE_API_URL || 'http://localhost:3002';
 
 const statusLabels = {
   pending: 'En attente',
@@ -19,35 +19,88 @@ const statusColors = {
 };
 
 function App() {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [candidatures, setCandidatures] = useState([]);
   const [stats, setStats] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
-  const [form, setForm] = useState({ company: '', jobTitle: '', location: '', source: 'Direct', notes: '' });
+  const [form, setForm] = useState({ company: '', jobTitle: '', location: '', source: 'Direct', notes: '', jobUrl: '' });
+
+  // Check session on mount
+  useEffect(() => {
+    const sessionId = localStorage.getItem('sessionId');
+    if (sessionId) {
+      fetch(`${API}/auth/me`, { headers: { 'x-session-id': sessionId } })
+        .then(res => {
+          if (res.ok) return res.json();
+          throw new Error();
+        })
+        .then(userData => {
+          setUser(userData);
+          localStorage.setItem('sessionId', sessionId);
+        })
+        .catch(() => {
+          localStorage.removeItem('sessionId');
+        })
+        .finally(() => setLoading(false));
+    } else {
+      setLoading(false);
+    }
+  }, []);
+
+  // Fetch data when user is logged in
+  useEffect(() => {
+    if (user) fetchData();
+  }, [user]);
 
   const fetchData = async () => {
+    const sessionId = localStorage.getItem('sessionId');
     try {
       const [candsRes, statsRes] = await Promise.all([
-        fetch(`${API}/api/candidatures`),
-        fetch(`${API}/api/stats`),
+        fetch(`${API}/api/candidatures`, { headers: { 'x-session-id': sessionId } }),
+        fetch(`${API}/api/stats`, { headers: { 'x-session-id': sessionId } }),
       ]);
       setCandidatures(await candsRes.json());
       setStats(await statsRes.json());
     } catch (err) {
       console.error('Erreur:', err);
-    } finally {
-      setLoading(false);
     }
   };
 
-  useEffect(() => { fetchData(); }, []);
+  const handleLogin = () => {
+    window.location.href = `${API}/auth/discord`;
+  };
+
+  const handleLogout = async () => {
+    const sessionId = localStorage.getItem('sessionId');
+    await fetch(`${API}/auth/logout`, { method: 'POST', headers: { 'x-session-id': sessionId } });
+    localStorage.removeItem('sessionId');
+    setUser(null);
+    setCandidatures([]);
+    setStats(null);
+  };
+
+  // Handle OAuth callback
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const sessionId = urlParams.get('sessionId');
+    const userData = urlParams.get('user');
+
+    if (sessionId && userData) {
+      localStorage.setItem('sessionId', sessionId);
+      setUser(JSON.parse(userData));
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
 
   const handleAdd = async (e) => {
     e.preventDefault();
     if (!form.company || !form.jobTitle) return;
+
+    const sessionId = localStorage.getItem('sessionId');
     await fetch(`${API}/api/candidatures`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-session-id': sessionId },
       body: JSON.stringify(form),
     });
     setForm({ company: '', jobTitle: '', location: '', source: 'Direct', notes: '' });
@@ -56,9 +109,10 @@ function App() {
   };
 
   const handleStatusChange = async (id, newStatus) => {
+    const sessionId = localStorage.getItem('sessionId');
     await fetch(`${API}/api/candidatures/${id}`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-session-id': sessionId },
       body: JSON.stringify({ status: newStatus }),
     });
     fetchData();
@@ -66,14 +120,39 @@ function App() {
 
   const handleDelete = async (id) => {
     if (!confirm('Supprimer cette candidature ?')) return;
-    await fetch(`${API}/api/candidatures/${id}`, { method: 'DELETE' });
+    const sessionId = localStorage.getItem('sessionId');
+    await fetch(`${API}/api/candidatures/${id}`, {
+      method: 'DELETE',
+      headers: { 'x-session-id': sessionId },
+    });
     fetchData();
   };
 
+  // Loading state
   if (loading) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <p style={{ color: 'var(--color-text-dim)' }}>Chargement...</p>
+      </div>
+    );
+  }
+
+  // Login screen
+  if (!user) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div className="card" style={{ textAlign: 'center', maxWidth: 400 }}>
+          <h1 style={{ fontSize: '2rem', marginBottom: 8 }}>JobTracker</h1>
+          <p style={{ color: 'var(--color-text-dim)', marginBottom: 32 }}>
+            Connecte-toi avec Discord pour accéder à ton dashboard de candidatures.
+          </p>
+          <button onClick={handleLogin} className="btn btn-primary" style={{ width: '100%' }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/>
+            </svg>
+            Connexion avec Discord
+          </button>
+        </div>
       </div>
     );
   }
@@ -85,12 +164,17 @@ function App() {
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 48 }}>
           <div>
-            <h1 style={{ fontSize: '2rem', fontWeight: 800, marginBottom: 4 }}>JobTracker</h1>
-            <p style={{ color: 'var(--color-text-dim)', fontSize: 14 }}>Arthur Laisney — Recherche d'alternance</p>
+            <h1 style={{ fontSize: '2rem', fontWeight: 800, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 12 }}>
+              JobTracker
+              <span style={{ color: 'var(--color-accent)', fontSize: '1rem' }}>@{user.username}</span>
+            </h1>
           </div>
-          <button onClick={() => setShowAddForm(!showAddForm)} className="btn btn-primary">
-            {showAddForm ? 'Fermer' : '+ Ajouter'}
-          </button>
+          <div style={{ display: 'flex', gap: 12 }}>
+            <button onClick={() => setShowAddForm(!showAddForm)} className="btn btn-primary">
+              {showAddForm ? 'Fermer' : '+ Ajouter'}
+            </button>
+            <button onClick={handleLogout} className="btn btn-outline">Déconnexion</button>
+          </div>
         </div>
 
         {/* Add Form */}
@@ -128,6 +212,12 @@ function App() {
                 <option>Email</option>
                 <option>Other</option>
               </select>
+              <input
+                className="input"
+                placeholder="URL de l'annonce (optionnel)"
+                value={form.jobUrl}
+                onChange={e => setForm({ ...form, jobUrl: e.target.value })}
+              />
             </div>
             <textarea
               className="input"
@@ -186,6 +276,7 @@ function App() {
                     <th>Lieu</th>
                     <th>Date</th>
                     <th>Source</th>
+                    <th>Annonce</th>
                     <th>Statut</th>
                     <th></th>
                   </tr>
@@ -194,20 +285,20 @@ function App() {
                   {candidatures.map(c => (
                     <tr key={c.id}>
                       <td style={{ fontWeight: 600 }}>{c.company}</td>
-                      <td>{c.jobTitle}</td>
+                      <td>{c.job_title}</td>
                       <td style={{ color: 'var(--color-text-dim)' }}>{c.location || '—'}</td>
-                      <td style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--color-text-dim)' }}>{c.dateApplied}</td>
+                      <td style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--color-text-dim)' }}>{c.date_applied}</td>
                       <td><span className="tag">{c.source}</span></td>
+                      <td>
+                        {c.job_url ? (
+                          <a href={c.job_url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-accent)' }}>Lien</a>
+                        ) : '—'}
+                      </td>
                       <td>
                         <select
                           value={c.status}
                           onChange={e => handleStatusChange(c.id, e.target.value)}
-                          style={{ 
-                            padding: '4px 8px',
-                            background: 'transparent',
-                            borderWidth: 1,
-                            borderStyle: 'solid',
-                          }}
+                          style={{ padding: '4px 8px', background: 'transparent', borderWidth: 1, borderStyle: 'solid' }}
                           className={statusColors[c.status]}
                         >
                           <option value="pending">En attente</option>
