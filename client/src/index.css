@@ -1,0 +1,148 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg: #080808;
+  --color-surface: #111111;
+  --color-surface-2: #1a1a1a;
+  --color-accent: #c8ff00;
+  --color-accent-dim: rgba(200, 255, 0, 0.08);
+  --color-text: #f0f0f0;
+  --color-text-dim: #888;
+  --color-text-muted: #555;
+  --color-border: #222;
+  --font-display: 'Syne', sans-serif;
+  --font-body: 'Inter', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: var(--font-body);
+  background: var(--color-bg);
+  color: var(--color-text);
+  line-height: 1.6;
+}
+
+h1, h2, h3 { font-family: var(--font-display); font-weight: 700; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: var(--color-surface); }
+::-webkit-scrollbar-thumb { background: var(--color-accent); border-radius: 2px; }
+
+/* Card */
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  padding: 24px;
+}
+
+/* Button */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  font-weight: 600;
+  font-size: 14px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: var(--font-body);
+}
+.btn-primary {
+  background: var(--color-accent);
+  color: #000;
+}
+.btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(200, 255, 0, 0.2);
+}
+.btn-outline {
+  background: transparent;
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+}
+.btn-outline:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+/* Tag */
+.tag {
+  display: inline-block;
+  padding: 3px 8px;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-text-dim);
+}
+
+/* Status badges */
+.status-pending { color: #f59e0b; border-color: #f59e0b; background: rgba(245, 158, 11, 0.1); }
+.status-interview { color: #3b82f6; border-color: #3b82f6; background: rgba(59, 130, 246, 0.1); }
+.status-rejected { color: #ef4444; border-color: #ef4444; background: rgba(239, 68, 68, 0.1); }
+.status-accepted { color: #22c55e; border-color: #22c55e; background: rgba(34, 197, 94, 0.1); }
+.status-withdrawn { color: var(--color-text-muted); border-color: var(--color-text-muted); background: rgba(85, 85, 85, 0.1); }
+
+/* Table */
+.table-container {
+  overflow-x: auto;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+th {
+  text-align: left;
+  padding: 12px 16px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--color-text-muted);
+  border-bottom: 1px solid var(--color-border);
+}
+td {
+  padding: 16px;
+  border-bottom: 1px solid var(--color-border);
+  font-size: 14px;
+}
+tr:hover td {
+  background: var(--color-surface);
+}
+
+/* Input */
+.input {
+  width: 100%;
+  padding: 12px 16px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+.input:focus {
+  border-color: var(--color-accent);
+}
+.input::placeholder {
+  color: var(--color-text-muted);
+}
+
+/* Select */
+select {
+  padding: 8px 12px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  font-size: 13px;
+  cursor: pointer;
+  outline: none;
+}
